@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     environment:
       - API_KEY=happyrobot-fde-secret-2024
-      - FMCSA_API_KEY=cdc33e44d693a3a58451898d4ec9df862c65b954
+      - FMCSA_API_KEY=your-fmcsa-key-here
       - DB_PATH=data/carrier_sales.db
     volumes:
       - ./data:/app/data

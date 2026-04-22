@@ -4,7 +4,7 @@ import os
 
 router = APIRouter()
 
-FMCSA_API_KEY = os.getenv("FMCSA_API_KEY", "cdc33e44d693a3a58451898d4ec9df862c65b954")
+FMCSA_API_KEY = os.getenv("FMCSA_API_KEY", "")
 FMCSA_BASE = "https://mobile.fmcsa.dot.gov/qc/services/carriers"
 
 @router.get("/verify/{mc_number}")
