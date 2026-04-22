@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CarrierOps — Inbound Sales Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+  :root {
+    --bg: #0a0b0f;
+    --surface: #12141a;
+    --surface2: #1a1d26;
+    --border: #1f2235;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.12);
+    --accent3: #5b8af5;
+    --text: #e8eaf0;
+    --muted: #6a708a;
+    --danger: #ff4560;
+    --danger-dim: rgba(255,69,96,0.12);
+    --warning: #ffb020;
+    --warning-dim: rgba(255,176,32,0.12);
+    --info-dim: rgba(91,138,245,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', sans-serif; min-height: 100vh; font-size: 14px;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.4;
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 28px; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 100;
+  }
+
+  .logo { font-family: 'Syne'; font-weight: 800; font-size: 17px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 10px var(--accent)} 50%{opacity:.6;box-shadow:0 0 20px var(--accent)} }
+
+  .header-right { display: flex; align-items: center; gap: 14px; }
+  .live-badge { display:flex;align-items:center;gap:6px;background:var(--accent-dim);border:1px solid rgba(0,229,160,0.3);color:var(--accent);padding:4px 10px;border-radius:20px;font-family:'DM Mono';font-size:11px;font-weight:500; }
+  .live-dot { width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite; }
+  .refresh-btn { background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'DM Sans';font-size:13px;transition:all .2s; }
+  .refresh-btn:hover { color:var(--text);border-color:var(--accent); }
+
+  main { padding: 24px 28px; max-width: 1600px; margin: 0 auto; }
+
+  .section-label { font-family:'DM Mono';font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px; }
+  .section-label::after { content:'';flex:1;height:1px;background:var(--border); }
+
+  .kpi-grid { display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px; }
+  .kpi-card { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden;transition:border-color .2s; }
+  .kpi-card:hover { border-color:var(--accent); }
+  .kpi-card::before { content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent-color,var(--accent));opacity:.6; }
+  .kpi-label { font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:'DM Mono'; }
+  .kpi-value { font-family:'Syne';font-size:24px;font-weight:700;line-height:1;margin-bottom:3px; }
+  .kpi-sub { font-size:11px;color:var(--muted); }
+
+  .decision-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px; }
+  .decision-card { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;transition:border-color .2s; }
+  .decision-card:hover { border-color:rgba(255,255,255,.1); }
+  .decision-header { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+  .decision-icon { width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0; }
+  .decision-title { font-family:'Syne';font-size:13px;font-weight:600; }
+  .decision-body { font-size:12px;color:var(--muted);line-height:1.6; }
+  .decision-body strong { color:var(--text);font-weight:500; }
+  .decision-action { margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px; }
+  .action-good { color:var(--accent); }
+  .action-warn { color:var(--warning); }
+  .action-bad { color:var(--danger); }
+
+  .charts-grid { display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin-bottom:24px; }
+  .chart-card { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px; }
+  .chart-title { font-family:'Syne';font-size:13px;font-weight:600;margin-bottom:2px; }
+  .chart-sub { font-size:11px;color:var(--muted);margin-bottom:14px; }
+  .chart-container { position:relative;height:200px; }
+
+  .lanes-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px; }
+
+  .table-card { background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px; }
+  .table-header { padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
+  .table-header h3 { font-family:'Syne';font-size:13px;font-weight:600; }
+
+  table { width:100%;border-collapse:collapse; }
+  thead th { padding:8px 14px;text-align:left;font-family:'DM Mono';font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface2); }
+  tbody td { padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover td { background:rgba(255,255,255,.015); }
+
+  .badge { display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;font-family:'DM Mono'; }
+  .badge-booked { background:var(--accent-dim);color:var(--accent); }
+  .badge-declined { background:var(--danger-dim);color:var(--danger); }
+  .badge-transferred { background:var(--info-dim);color:var(--accent3); }
+  .badge-cancelled { background:var(--warning-dim);color:var(--warning); }
+  .badge-no_answer { background:rgba(90,96,128,.15);color:var(--muted); }
+  .badge-positive { background:var(--accent-dim);color:var(--accent); }
+  .badge-neutral { background:var(--info-dim);color:var(--accent3); }
+  .badge-negative { background:var(--danger-dim);color:var(--danger); }
+  .badge-frustrated { background:var(--warning-dim);color:var(--warning); }
+
+  .mono { font-family:'DM Mono';font-size:12px; }
+  .rate-diff { font-size:11px;font-family:'DM Mono'; }
+  .rate-diff.below { color:var(--accent); }
+  .rate-diff.above { color:var(--danger); }
+  .empty-state { text-align:center;padding:50px 20px;color:var(--muted);font-size:13px; }
+  .empty-state .icon { font-size:28px;margin-bottom:10px; }
+
+  .inv-pill { display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-family:'DM Mono';font-size:12px;border:1px solid var(--border);background:var(--surface2); }
+  .inv-dot { width:6px;height:6px;border-radius:50%; }
+  .lane-bar-bg { background:var(--surface2);border-radius:3px;height:6px;width:100%; }
+  .lane-bar-fill { border-radius:3px;height:6px;transition:width .4s; }
+  .neg-round-row { display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px; }
+  .neg-round-row:last-child { border-bottom:none; }
+
+  @media (max-width:1200px) {
+    .kpi-grid{grid-template-columns:repeat(3,1fr)}
+    .charts-grid{grid-template-columns:1fr 1fr}
+    .decision-grid{grid-template-columns:1fr}
+    .lanes-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-dot"></div>CarrierOps<span style="color:var(--muted);font-weight:400;font-size:13px;margin-left:4px">/ Inbound Sales Intelligence</span></div>
+  <div class="header-right">
+    <div id="loadInventory" style="display:flex;gap:10px;"></div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+</header>
+<main>
+  <div class="section-label">Performance overview</div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="section-label">What should you do next?</div>
+  <div class="decision-grid" id="decisionGrid"></div>
+
+  <div class="section-label">Analytics</div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Daily call volume vs bookings</div>
+      <div class="chart-sub">Are we converting more calls over time?</div>
+      <div class="chart-container"><canvas id="volumeChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Call outcomes</div>
+      <div class="chart-sub">Where are calls ending up?</div>
+      <div class="chart-container"><canvas id="outcomeChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Carrier sentiment</div>
+      <div class="chart-sub">How do carriers feel after talking to the agent?</div>
+      <div class="chart-container"><canvas id="sentimentChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Operational intelligence</div>
+  <div class="lanes-grid">
+    <div class="chart-card">
+      <div class="chart-title">Top converting lanes</div>
+      <div class="chart-sub">Which lanes are closing? Prioritize load sourcing here.</div>
+      <div id="topLanes"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Negotiation round analysis</div>
+      <div class="chart-sub">At which round are deals closing — or falling apart?</div>
+      <div id="negRounds"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Recent calls</div>
+  <div class="table-card">
+    <div class="table-header"><h3>Call log</h3><span style="font-size:12px;color:var(--muted)" id="callCount">—</span></div>
+    <div id="callTable"></div>
+  </div>
+</main>
+<script>
+const API_BASE=window.location.origin,API_KEY="happyrobot-fde-secret-2024";
+let charts={};
+
+async function fetchMetrics(){const r=await fetch(`${API_BASE}/api/dashboard/metrics`,{headers:{"X-API-Key":API_KEY}});if(!r.ok)throw new Error("API");return r.json();}
+function fmt$(v){return v?"$"+Number(v).toLocaleString("en-US",{maximumFractionDigits:0}):"—";}
+function fmtDur(s){if(!s)return"—";return`${Math.floor(s/60)}m ${s%60}s`;}
+
+function renderKPIs(s){
+  const cards=[
+    {label:"Total Calls",value:s.total_calls,sub:"Inbound carrier calls",color:"var(--accent3)"},
+    {label:"Loads Booked",value:s.booked,sub:`${s.declined||0} declined`,color:"var(--accent)"},
+    {label:"Conversion Rate",value:s.conversion_rate+"%",sub:s.conversion_rate>=30?"Above 30% target":"Below 30% target",color:s.conversion_rate>=30?"var(--accent)":"var(--warning)"},
+    {label:"Revenue Booked",value:fmt$(s.total_revenue),sub:"Total from agent",color:"var(--accent)"},
+    {label:"Avg Rate Discount",value:s.rate_efficiency_pct.toFixed(1)+"%",sub:s.rate_efficiency_pct<=3?"Margin healthy":"Below loadboard",color:s.rate_efficiency_pct<=3?"var(--accent)":"var(--danger)"},
+    {label:"Avg Handle Time",value:fmtDur(s.avg_call_duration_seconds),sub:`${s.avg_negotiation_rounds.toFixed(1)} avg rounds`,color:"var(--text)"},
+  ];
+  document.getElementById("kpiGrid").innerHTML=cards.map(c=>`
+    <div class="kpi-card" style="--accent-color:${c.color}">
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value" style="color:${c.color}">${c.value||"—"}</div>
+      <div class="kpi-sub">${c.sub}</div>
+    </div>`).join("");
+}
+
+function renderDecisions(s,cd){
+  const conv=s.conversion_rate,rateEff=s.rate_efficiency_pct,avgR=s.avg_negotiation_rounds,total=s.total_calls,declined=s.declined||0;
+  const negCount=(cd.sentiment_breakdown||[]).filter(x=>x.sentiment==="negative"||x.sentiment==="frustrated").reduce((a,b)=>a+b.count,0);
+  const negPct=total?Math.round(negCount/total*100):0;
+  const topLane=(cd.top_lanes||[])[0];
+  const ins=[];
+
+  if(conv>=30){ins.push({icon:"↗",bg:"var(--accent-dim)",title:"Conversion is strong",body:`<strong>${conv}%</strong> of inbound calls result in a booking — above the 30% benchmark. The agent's pitch and pricing are landing well with carriers.`,action:"Keep current pricing strategy",ac:"action-good"});}
+  else{ins.push({icon:"↘",bg:"var(--danger-dim)",title:"Conversion needs work",body:`Only <strong>${conv}%</strong> of calls convert. ${declined} carriers declined. Check declined call notes — if most cite pricing, consider widening the negotiation floor or adjusting opening rates on underperforming lanes.`,action:"Review declined call notes for patterns",ac:"action-bad"});}
+
+  if(rateEff<=3){ins.push({icon:"$",bg:"var(--accent-dim)",title:"Rate discipline is holding",body:`Agreed rates average <strong>${rateEff.toFixed(1)}%</strong> below loadboard — within the 5% max threshold. The agent isn't giving away margin to close deals.`,action:"No pricing changes needed",ac:"action-good"});}
+  else{ins.push({icon:"$",bg:"var(--danger-dim)",title:"Margin erosion detected",body:`Rates are <strong>${rateEff.toFixed(1)}%</strong> below loadboard — past the 5% guardrail.${avgR>2?" Extended negotiations (avg "+avgR.toFixed(1)+" rounds) suggest carriers are pushing hard.":""} The agent may be conceding too quickly in rounds 2–3.`,action:"Tighten counter-offer logic in round 2–3",ac:"action-bad"});}
+
+  if(negPct<=15){ins.push({icon:"◉",bg:"var(--info-dim)",title:"Carrier experience is positive",body:`Only <strong>${negPct}%</strong> of calls show negative or frustrated sentiment.${topLane?` Top lane: <strong>${topLane.origin} → ${topLane.destination}</strong> (${topLane.bookings} bookings at avg ${fmt$(topLane.avg_rate)}).`:""} Carriers are engaging well with the agent.`,action:topLane?`Source more loads: ${topLane.origin} → ${topLane.destination}`:"Monitor sentiment trends",ac:"action-good"});}
+  else{ins.push({icon:"◉",bg:"var(--warning-dim)",title:"Carrier frustration is elevated",body:`<strong>${negPct}%</strong> of calls show negative/frustrated sentiment. This often correlates with aggressive pricing or lack of load availability. Cross-reference frustrated calls with their requested lanes — if you're short on inventory for popular lanes, that's the root cause.`,action:"Cross-check frustration with load inventory gaps",ac:"action-warn"});}
+
+  document.getElementById("decisionGrid").innerHTML=ins.map(i=>`
+    <div class="decision-card">
+      <div class="decision-header"><div class="decision-icon" style="background:${i.bg};color:var(--text);">${i.icon}</div><div class="decision-title">${i.title}</div></div>
+      <div class="decision-body">${i.body}</div>
+      <div class="decision-action ${i.ac}">→ ${i.action}</div>
+    </div>`).join("");
+}
+
+function renderTopLanes(lanes){
+  if(!lanes||!lanes.length){document.getElementById("topLanes").innerHTML=`<div class="empty-state" style="padding:30px"><div class="icon">🛣</div>No lane data yet</div>`;return;}
+  const mx=Math.max(...lanes.map(l=>l.bookings));
+  document.getElementById("topLanes").innerHTML=lanes.map((l,i)=>`
+    <div style="padding:10px 0;${i<lanes.length-1?"border-bottom:1px solid var(--border);":""}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:500;">${l.origin} → ${l.destination}</span>
+        <span class="mono" style="color:var(--accent)">${l.bookings} booked · avg ${fmt$(l.avg_rate)}</span>
+      </div>
+      <div class="lane-bar-bg"><div class="lane-bar-fill" style="width:${(l.bookings/mx)*100}%;background:var(--accent);"></div></div>
+    </div>`).join("");
+}
+
+function renderNegRounds(rounds){
+  if(!rounds||!rounds.length){document.getElementById("negRounds").innerHTML=`<div class="empty-state" style="padding:30px"><div class="icon">🤝</div>No negotiation data yet</div>`;return;}
+  const total=rounds.reduce((a,b)=>a+b.count,0);
+  const labels={0:"Accepted immediately",1:"Closed in round 1",2:"Closed in round 2",3:"Closed in round 3"};
+  const colors={0:"var(--accent)",1:"var(--accent3)",2:"var(--warning)",3:"var(--danger)"};
+  const cmt={0:"Carrier took listed rate — strong pricing",1:"One counter — normal friction",2:"Two rounds — carrier pushed, agent held",3:"Max rounds — margin risk, check agreed rates"};
+  document.getElementById("negRounds").innerHTML=rounds.map(r=>`
+    <div class="neg-round-row">
+      <div style="width:40px;font-family:'DM Mono';font-size:20px;font-weight:600;color:${colors[r.rounds]||"var(--text)"};">${r.count}</div>
+      <div style="flex:1;">
+        <div style="font-weight:500;margin-bottom:2px;">${labels[r.rounds]||`Round ${r.rounds}`}</div>
+        <div style="font-size:11px;color:var(--muted);">${cmt[r.rounds]||""} · ${total?Math.round(r.count/total*100):0}% of bookings</div>
+      </div>
+    </div>`).join("");
+}
+
+function renderCharts(data){
+  Chart.defaults.color="#6a708a";Chart.defaults.font={family:"'DM Mono',monospace",size:11};
+  if(charts.volume)charts.volume.destroy();
+  const vd=[...(data.daily_volume||[])].reverse();
+  charts.volume=new Chart(document.getElementById("volumeChart").getContext("2d"),{type:"bar",data:{labels:vd.map(d=>d.day?.slice(5)||""),datasets:[{label:"Total",data:vd.map(d=>d.total),backgroundColor:"rgba(91,138,245,.3)",borderColor:"#5b8af5",borderWidth:1,borderRadius:4},{label:"Booked",data:vd.map(d=>d.booked),backgroundColor:"rgba(0,229,160,.4)",borderColor:"#00e5a0",borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:10}}},scales:{x:{grid:{color:"#1f2235"}},y:{grid:{color:"#1f2235"},beginAtZero:true}}}});
+
+  if(charts.outcome)charts.outcome.destroy();
+  const oc=data.outcome_breakdown||[],ocol={booked:"#00e5a0",declined:"#ff4560",transferred:"#5b8af5",cancelled:"#ffb020",no_answer:"#2a2d3e"};
+  charts.outcome=new Chart(document.getElementById("outcomeChart").getContext("2d"),{type:"doughnut",data:{labels:oc.map(o=>o.outcome),datasets:[{data:oc.map(o=>o.count),backgroundColor:oc.map(o=>ocol[o.outcome]||"#444"),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:10}}}}});
+
+  if(charts.sentiment)charts.sentiment.destroy();
+  const sn=data.sentiment_breakdown||[],scol={positive:"#00e5a0",neutral:"#5b8af5",negative:"#ff4560",frustrated:"#ffb020"};
+  charts.sentiment=new Chart(document.getElementById("sentimentChart").getContext("2d"),{type:"doughnut",data:{labels:sn.map(s=>s.sentiment),datasets:[{data:sn.map(s=>s.count),backgroundColor:sn.map(s=>scol[s.sentiment]||"#444"),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:10}}}}});
+}
+
+function renderTable(calls){
+  document.getElementById("callCount").textContent=`${calls.length} recent calls`;
+  if(!calls.length){document.getElementById("callTable").innerHTML=`<div class="empty-state"><div class="icon">📞</div>No calls yet. The agent will populate this automatically.</div>`;return;}
+  document.getElementById("callTable").innerHTML=`<table><thead><tr><th>Call ID</th><th>Carrier</th><th>Lane</th><th>Board</th><th>Agreed</th><th>Rnds</th><th>Outcome</th><th>Sentiment</th><th>Time</th></tr></thead><tbody>${calls.map(c=>{
+    const diff=c.final_agreed_rate&&c.loadboard_rate?((c.loadboard_rate-c.final_agreed_rate)/c.loadboard_rate*100).toFixed(1):null;
+    const dh=diff!==null?`<span class="rate-diff ${parseFloat(diff)>0?'below':'above'}">${diff>0?'-':'+'}${Math.abs(diff)}%</span>`:"";
+    return`<tr><td class="mono">${c.call_id||"—"}</td><td>${c.carrier_name||"Unknown"}<br><span style="color:var(--muted);font-size:11px">${c.mc_number||""}</span></td><td style="font-size:12px">${c.origin||"—"} → ${c.destination||"—"}</td><td class="mono">${fmt$(c.loadboard_rate)}</td><td class="mono">${fmt$(c.final_agreed_rate)} ${dh}</td><td>${c.negotiation_rounds??"—"}</td><td><span class="badge badge-${c.outcome}">${c.outcome||"—"}</span></td><td><span class="badge badge-${c.sentiment}">${c.sentiment||"—"}</span></td><td style="color:var(--muted);font-size:11px">${fmtDur(c.call_duration_seconds)}</td></tr>`;
+  }).join("")}</tbody></table>`;
+}
+
+function renderInventory(inv){
+  document.getElementById("loadInventory").innerHTML=[{l:"Available",k:"available",c:"#00e5a0"},{l:"Booked",k:"booked",c:"#ff4560"}].map(p=>`<div class="inv-pill"><div class="inv-dot" style="background:${p.c}"></div>${inv[p.k]||0} ${p.l}</div>`).join("");
+}
+
+async function loadData(){
+  try{
+    const d=await fetchMetrics();
+    renderKPIs(d.summary);renderDecisions(d.summary,d.charts);renderCharts(d.charts);
+    renderTopLanes(d.charts.top_lanes||[]);renderNegRounds(d.charts.negotiation_rounds_distribution||[]);
+    renderTable(d.recent_calls||[]);renderInventory(d.load_inventory||{});
+  }catch(e){console.error("Load failed:",e);}
+}
+loadData();setInterval(loadData,30000);
+</script>
+</body>
+</html>
